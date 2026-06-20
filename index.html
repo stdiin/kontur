@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Kontur</title>
+   <link rel="stylesheet" href="style.css">
+   <script src="index.js" defer></script>
+</head>
+<body>
+   <div id="main-menu">
+      <span class="title">Kontur</span>
+      <div class="buttons">
+         <button onclick="startGame()">Graj</button>
+         <button>Ustawienia</button>
+      </div>
+   </div>
+
+   <div id="game" class="hidden">
+      <div class="topbar">
+         <div class="controls">
+            <span>test</span>
+            <button>Sprawdź</button>
+         </div>
+         <button onclick="endGame()">Wróć do menu</button>
+      </div>
+      <canvas id="map"></canvas>
+   </div>
+
+   <div id="settings" class="hidden">
+      <input type="checkbox" name="" id="">
+      <input type="checkbox" name="" id="">
+      <input type="checkbox" name="" id="">
+   </div>
+</body>
+</html>

@@ -1,0 +1,86 @@
+@import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@300..700&family=Comic+Neue:ital,wght@0,300;0,400;0,700;1,300;1,400;1,700&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+
+body {
+   height: 100vh;
+   margin: 0;
+   background-color: #303030;
+   overflow: hidden;
+}
+
+.hidden {
+   display: none !important;
+}
+
+button {
+   border: none;
+   border-radius: 0.3em;
+   font-size: 1rem;
+   padding: 0.2em 1em;
+
+   &:hover {
+      outline: 3px red solid;
+   }
+
+   &:active {
+      background-color: rgba(255, 255, 255, 0.728);
+   }
+}
+
+#main-menu {
+   display: grid;
+   place-items: center;
+   height: 100%;
+
+   * {
+      font-family: Comfortaa;
+   }
+
+   .title {
+      color: white;
+      font-size: 4rem;
+   }
+
+   .buttons {
+      display: grid;
+      gap: 1em;
+
+      button {
+         font-size: 1.8rem;
+      }
+   }
+}
+
+#game {
+   height: 100%;
+
+   .topbar {
+      display: flex;
+      justify-content: center;
+      padding: 1.2rem;
+      
+      .controls {
+         color: white;
+         display: flex;
+         gap: 2em;
+
+         span {
+            font-size: 2rem;
+         }
+      }
+
+      > button {
+         position: absolute;
+         right: 1em;
+         padding: 0.4em 1em;
+      }
+   }
+
+   #map {
+      background-color: black;
+      background-image: url(assets/north-america-map.png);
+      background-repeat: no-repeat;
+      background-size: contain;
+      background-position: 50%;
+      width: 100%;
+   }
+}

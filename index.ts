@@ -6,19 +6,28 @@ const map = document.getElementById("map") as HTMLCanvasElement
 const ctx = map.getContext("2d")!
 
 function drawMap(img: HTMLImageElement) {
-   img.onload = () => {
-      map.width = map.offsetWidth
-      map.height = map.offsetHeight
-      ctx.imageSmoothingQuality = "high"
-      ctx.drawImage(img, window.innerWidth / 2 - img.width / 2, window.innerHeight / 2 - img.height / 2)
-   }
+   map.width = map.offsetWidth
+   map.height = map.offsetHeight
+
+   const scale = Math.min(map.width / img.width, map.height / img.height)
+   const x = (map.width - img.width * scale) / 2
+   const y = (map.height - img.height * scale) / 2
+
+   ctx.drawImage(img, x, y, img.width * scale, img.height * scale)
 }
 
 function startGame() {
    const img = new Image()
-   img.src = "assets/north-america-map.png"
 
-   drawMap(img)
+   img.onload = () => {
+      drawMap(img)
+
+      window.addEventListener("resize", () => {
+         drawMap(img)
+      })
+   }
+
+   img.src = "assets/north-america-map.png"
 
    game.classList.remove("hidden")
    mainMenu.classList.add("hidden")

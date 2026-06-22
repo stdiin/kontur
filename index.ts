@@ -1,6 +1,10 @@
 let isPlaying = false
-let cameraOffsetX = window.innerWidth / 2
-let cameraOffsetY = window.innerHeight / 2
+let cameraOffsetX = 0
+let cameraOffsetY = 0
+let zoom = 1
+
+const MAX_ZOOM = 3
+const MIN_ZOOM = 1
 
 const game = document.getElementById("game") as HTMLDivElement
 const mainMenu = document.getElementById("main-menu") as HTMLDivElement
@@ -15,8 +19,9 @@ function drawMap(img: HTMLImageElement) {
    const x = (map.width - img.width * scale) / 2
    const y = (map.height - img.height * scale) / 2
 
-   ctx.translate(-window.innerWidth / 2 + cameraOffsetX, -window.innerHeight / 2 + cameraOffsetY)
-   
+   ctx.translate(cameraOffsetX, cameraOffsetY)
+   ctx.scale(zoom, zoom)
+
    ctx.drawImage(img, x, y, img.width * scale, img.height * scale)
 }
 
@@ -30,12 +35,9 @@ function startGame() {
          drawMap(img)
       }
 
-      let dragStartX = 0
-      let dragStartY = 0
-
       onmousedown = (event) => {
-         dragStartX = event.clientX - cameraOffsetX
-         dragStartY = event.clientY - cameraOffsetY
+         const dragStartX = event.clientX - cameraOffsetX
+         const dragStartY = event.clientY - cameraOffsetY
          
          onmousemove = (event) => {
             cameraOffsetX = event.clientX - dragStartX
@@ -46,6 +48,24 @@ function startGame() {
 
       onmouseup = () => {
          onmousemove = null
+      }
+
+      onwheel = (event) => {
+         const rect = map.getBoundingClientRect()
+         
+         const mouseX = event.clientX - rect.left
+         const mouseY = event.clientY - rect.top
+
+         const worldX = (mouseX - cameraOffsetX) / zoom
+         const worldY = (mouseY - cameraOffsetY) / zoom
+
+         zoom *= Math.exp(-event.deltaY * 0.001)
+         zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom))
+
+         cameraOffsetX = mouseX - worldX * zoom
+         cameraOffsetY = mouseY - worldY * zoom
+         
+         drawMap(img)
       }
    }
 

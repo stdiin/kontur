@@ -4,6 +4,7 @@ body {
    height: 100dvh;
    margin: 0;
    background-color: #303030;
+   overflow: hidden;
 }
 
 .hidden {

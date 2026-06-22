@@ -1,4 +1,6 @@
 let isPlaying = false
+let cameraOffsetX = window.innerWidth / 2
+let cameraOffsetY = window.innerHeight / 2
 
 const game = document.getElementById("game") as HTMLDivElement
 const mainMenu = document.getElementById("main-menu") as HTMLDivElement
@@ -13,6 +15,8 @@ function drawMap(img: HTMLImageElement) {
    const x = (map.width - img.width * scale) / 2
    const y = (map.height - img.height * scale) / 2
 
+   ctx.translate(-window.innerWidth / 2 + cameraOffsetX, -window.innerHeight / 2 + cameraOffsetY)
+   
    ctx.drawImage(img, x, y, img.width * scale, img.height * scale)
 }
 
@@ -22,9 +26,27 @@ function startGame() {
    img.onload = () => {
       drawMap(img)
 
-      window.addEventListener("resize", () => {
+      onresize = () => {
          drawMap(img)
-      })
+      }
+
+      let dragStartX = 0
+      let dragStartY = 0
+
+      onmousedown = (event) => {
+         dragStartX = event.clientX - cameraOffsetX
+         dragStartY = event.clientY - cameraOffsetY
+         
+         onmousemove = (event) => {
+            cameraOffsetX = event.clientX - dragStartX
+            cameraOffsetY = event.clientY - dragStartY
+            drawMap(img)
+         }
+      }
+
+      onmouseup = () => {
+         onmousemove = null
+      }
    }
 
    img.src = "assets/north-america-map.png"

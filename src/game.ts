@@ -25,8 +25,9 @@ export class Game extends GameMap {
 
       if (marker.x === 0 && marker.y === 0) return
 
-      const x = marker.x - marker.size / 2
-      const y = marker.y - marker.size
+      const worldPos = this.imageToWorld(marker.x, marker.y)
+      const x = worldPos.x - marker.size / 2
+      const y = worldPos.y - marker.size
 
       this.ctx.drawImage(marker.img, x, y, marker.size, marker.size)
    }
@@ -37,9 +38,11 @@ export class Game extends GameMap {
 
       if (!this.isPointInsideMap(worldPos.x, worldPos.y)) return
 
-      this.marker.x = worldPos.x
-      this.marker.y = worldPos.y
+      const imagePos = this.worldToImage(worldPos.x, worldPos.y)
 
+      this.marker.x = imagePos.x
+      this.marker.y = imagePos.y
+      
       this.render()
    }
 

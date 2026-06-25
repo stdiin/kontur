@@ -42,8 +42,6 @@ export class GameMap {
       const scaledImgWidth = img.width * scale
       const scaledImgHeight = img.height * scale
 
-      console.log(scale)
-
       const x = (map.width - scaledImgWidth) / 2
       const y = (map.height - scaledImgHeight) / 2
 
@@ -109,6 +107,20 @@ export class GameMap {
       return {
          x: (x - camera.x) / camera.zoom,
          y: (y - camera.y) / camera.zoom
+      }
+   }
+
+   protected worldToImage(x: number, y: number): Point {
+      return {
+         x: (x - this.x) / this.scale,
+         y: (y - this.y) / this.scale
+      }
+   }
+
+   protected imageToWorld(x: number, y: number): Point {
+      return {
+         x: this.x + x * this.scale,
+         y: this.y + y * this.scale
       }
    }
 }

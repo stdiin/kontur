@@ -5,13 +5,13 @@
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
    <title>Kontur</title>
    <link rel="stylesheet" href="style.css">
-   <script src="index.js" defer></script>
+   <script type="module" src="dist/main.js" defer></script>
 </head>
 <body>
    <div id="main-menu">
       <span class="title">Kontur</span>
       <div class="buttons">
-         <button onclick="startGame()">Graj</button>
+         <button id="play-button">Graj</button>
          <button>Ustawienia</button>
       </div>
    </div>
@@ -22,9 +22,13 @@
             <span>test</span>
             <button>Sprawdź</button>
          </div>
-         <button onclick="endGame()">Wróć do menu</button>
+         <button id="leave-button">Wróć do menu</button>
       </div>
       <canvas id="map"></canvas>
+   </div>
+
+   <div id="editor">
+      
    </div>
 
    <div id="settings" class="hidden">

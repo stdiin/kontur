@@ -4,14 +4,19 @@ const mapCanvas = document.getElementById("map") as HTMLCanvasElement
 const game = document.getElementById("game") as HTMLDivElement
 const editor = document.getElementById("editor") as HTMLDivElement
 const mainMenu = document.getElementById("main-menu") as HTMLDivElement
+const mapSelector = document.getElementById("map-selector") as HTMLDivElement
+const mapUpload = document.getElementById("map-upload") as HTMLInputElement
 const playButton = document.getElementById("play-button") as HTMLButtonElement
 const leaveButton = document.getElementById("leave-button") as HTMLButtonElement
+
+let map: Game | null
 
 function toggleUI(mode: "MENU" | "GAME" | "EDITOR") {
    switch(mode) {
       case "MENU":
          game.classList.add("hidden")
          editor.classList.add("hidden")
+         mapSelector.classList.add("hidden")
          mainMenu.classList.remove("hidden")
          break
 
@@ -30,51 +35,30 @@ function toggleUI(mode: "MENU" | "GAME" | "EDITOR") {
 playButton.onclick = () => {
    toggleUI("GAME")
 
-   const img = new Image()
-   const markerImg = new Image()
-   markerImg.src = "assets/map-marker.svg"
+   mapSelector.classList.remove("hidden")
+   mapUpload.onchange = () => {
+      const mapData = mapUpload.files?.item(0)
 
-   img.onload = () => {
-      const map = new Game(img, mapCanvas, markerImg)
-      let isDragging = false
+      if (!mapData) return
 
-      onresize = () => {
-         map.update()
-         map.render()
-      }
+      mapData.text()
+         .then(text => JSON.parse(text))
+         .then(json => {
+            mapSelector.classList.add("hidden")
 
-      onmousedown = (e) => {
-         const cameraPos = map.cameraPosition
-         const dragStartX = e.clientX - cameraPos.x
-         const dragStartY = e.clientY - cameraPos.y
+            const mapImgData = json.image
 
-         onmousemove = (e) => {
-            isDragging = true
-            map.pan(e.clientX, e.clientY, dragStartX, dragStartY)
-         }
-      }
+            if (!mapImgData) {
+               throw new Error("Invalid map data")
+            }
 
-      onmouseup = (e) => {
-         onmousemove = null
-
-         if (!isDragging) {
-            map.select(e.clientX, e.clientY)
-         }
-
-         isDragging = false
-      }
-
-      onwheel = (e) => {
-         map.zoom(e.clientX, e.clientY, e.deltaY)
-      }
-
-      map.update()
-      map.render()
+            map = new Game(mapImgData, mapCanvas, "assets/map-marker.svg")
+            map.setup()
+         })
    }
-
-   img.src = "assets/north-america-map.png"
 }
 
 leaveButton.onclick = () => {
    toggleUI("MENU")
+   map?.destroy()
 }

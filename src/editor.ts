@@ -1,3 +1,5 @@
-class Editor {
+import { GameMap } from "./map"
+
+class Editor extends GameMap {
    
 }

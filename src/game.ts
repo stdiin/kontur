@@ -8,13 +8,26 @@ type Marker = Point & {
 export class Game extends GameMap {
    private marker: Marker
 
-   constructor(mapImg: HTMLImageElement, map: HTMLCanvasElement, markerImg: HTMLImageElement) {
-      super(mapImg, map)
+   constructor(mapImgSrc: string, map: HTMLCanvasElement, markerImgSrc: string) {
+      super(mapImgSrc, map)
+
+      const markerImg = new Image()
+      markerImg.src = markerImgSrc
+
       this.marker = {
          x: 0,
          y: 0,
          size: 40,
          img: markerImg
+      }
+   }
+
+   async setup() {
+      await super.setup()
+      await this.marker.img.decode()
+
+      this.onclick = (e) => {
+         this.select(e.clientX, e.clientY)
       }
    }
 

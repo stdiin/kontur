@@ -81,3 +81,19 @@ button {
       flex-grow: 1;
    }
 }
+
+#map-selector {
+   position: absolute;
+   top: 50%;
+   left: 50%;
+   transform: translate(-50%, -50%);
+   background-color: #303030;
+   padding: 2rem;
+   border-radius: 1rem;
+   color: white;
+
+   div {
+      display: grid;
+      gap: 0.3em;
+   }
+}

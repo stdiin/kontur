@@ -9,27 +9,79 @@ type Camera = Point & {
 
 export class GameMap {
    private camera: Camera
+   private img: HTMLImageElement
    protected ctx: CanvasRenderingContext2D
    protected scale = 1
    protected x = 0
    protected y = 0
    protected width = 0
    protected height = 0
+   protected onclick?: (e: MouseEvent) => void
 
-   constructor(private img: HTMLImageElement, private map: HTMLCanvasElement) {
+   constructor(imgSrc: string, private map: HTMLCanvasElement) {
       const ctx = map.getContext("2d")
 
       if (!ctx) {
          throw new Error("Could not get context 2d from map canvas")
       }
 
-      this.ctx = ctx
+      const img = new Image()
+      img.src = imgSrc
 
+      this.img = img
+      this.ctx = ctx
       this.camera = {
          x: 0,
          y: 0,
          zoom: 1
       }
+   }
+
+   async setup() {
+      await this.img.decode()
+
+      let isDragging = false
+      const map = this.map
+
+      onresize = () => {
+         this.update()
+         this.render()
+      }
+
+      map.onmousedown = (e) => {
+         const cameraPos = this.cameraPosition
+         const dragStartX = e.clientX - cameraPos.x
+         const dragStartY = e.clientY - cameraPos.y
+
+         onmousemove = (e) => {
+            isDragging = true
+            this.pan(e.clientX, e.clientY, dragStartX, dragStartY)
+         }
+      }
+
+      onmouseup = (e) => {
+         onmousemove = null
+
+         if (!isDragging) {
+            if (this.onclick) {
+               this.onclick(e)
+            }
+         }
+
+         isDragging = false
+      }
+
+      map.onwheel = (e) => {
+         this.zoom(e.clientX, e.clientY, e.deltaY)
+      }
+
+      this.update()
+      this.render()
+   }
+
+   destroy() {
+      this.ctx.reset()
+      for (var member in this) delete this[member]
    }
 
    update() {

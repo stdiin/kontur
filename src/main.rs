@@ -1,9 +1,9 @@
 use egui_macroquad::macroquad::{self, prelude::*};
 
-mod screens;
-mod viewer;
+mod screen;
+mod map;
 
-use crate::screens::{ScreenType, Transition};
+use crate::screen::{ScreenType, Transition};
 
 #[macroquad::main("Kontur")]
 async fn main() {

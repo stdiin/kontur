@@ -20,10 +20,10 @@ pub trait Screen {
 
 pub enum ScreenType {
     Quiz,
-    
+
     #[cfg(not(target_os = "android"))]
     Editor,
-    
+
     Menu,
 }
 
@@ -32,7 +32,7 @@ impl ScreenType {
         match self {
             #[cfg(not(target_os = "android"))]
             Self::Editor => Box::new(editor::Editor::default()),
-            
+
             Self::Quiz => Box::new(quiz::Quiz::default()),
             Self::Menu => Box::new(menu::Menu::default()),
         }

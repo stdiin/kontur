@@ -1,5 +1,5 @@
 use super::Screen;
-use crate::{screens::Transition, viewer::MapViewer};
+use crate::{screen::Transition, map::viewer::MapViewer};
 use egui_macroquad::{egui, macroquad::prelude::*};
 
 pub struct Quiz {

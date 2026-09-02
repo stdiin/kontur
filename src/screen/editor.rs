@@ -1,48 +1,23 @@
 use crate::{
-    screens::{Screen, Transition},
-    viewer::MapViewer,
+    screen::{Screen, Transition},
+    map::{self, viewer::MapViewer, data::*}
 };
+
 use egui_macroquad::{
     egui,
     macroquad::{self, prelude::*},
 };
-use rkyv::{Archive, Deserialize, Serialize};
+
 use std::{
-    error::Error,
     fs,
-    path::{Path, PathBuf},
+    path::{PathBuf},
     thread::JoinHandle,
 };
-
-#[derive(Debug, Serialize, Deserialize, Archive, Clone, Copy)]
-struct Vertex {
-    x: f32,
-    y: f32,
-}
-
-#[derive(Debug, Serialize, Deserialize, Archive, Default, Clone)]
-struct Region {
-    name: String,
-    vertices: Vec<Vertex>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Archive, Default, Clone)]
-struct Category {
-    name: String,
-    regions: Vec<Region>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Archive, Default, Clone)]
-struct MapData {
-    name: String,
-    image: Vec<u8>,
-    categories: Vec<Category>,
-}
 
 #[derive(Debug, Default, Clone)]
 struct EditorRegion {
     name: String,
-    vertices: Vec<Vertex>,
+    vertices: Vec<Point>,
     visible: bool,
 }
 
@@ -174,22 +149,6 @@ impl Default for Editor {
     }
 }
 
-fn load_map(path: impl AsRef<Path>) -> Option<MapData> {
-    let path = path.as_ref();
-    let bytes = fs::read(path).ok()?;
-    rkyv::from_bytes::<MapData, rkyv::rancor::Error>(&bytes).ok()
-}
-
-fn save_map(map_data: impl Into<MapData>, path: impl AsRef<Path>) -> Result<(), Box<dyn Error>> {
-    let path = path.as_ref();
-    let data = map_data.into();
-    let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&data)?;
-
-    fs::write(path, bytes)?;
-
-    Ok(())
-}
-
 impl Screen for Editor {
     fn ui(&mut self, ctx: &egui::Context) -> Transition {
         let mut next_state: Option<EditorState> = None;
@@ -250,7 +209,7 @@ impl Screen for Editor {
                             if ui.button("Save").clicked() {
                                 ui.close_menu();
                                 match &editor.save_file_path {
-                                    Some(path) => save_map(editor.map_data.clone(), path).unwrap(),
+                                    Some(path) => map::save(editor.map_data.clone(), path).unwrap(),
 
                                     None => {
                                         editor.prompt_save();
@@ -426,7 +385,7 @@ impl Screen for Editor {
         match &mut self.state {
             EditorState::Selecting(selector) => {
                 if let Some(Some(map_file_path)) = selector.import_task.take() {
-                    if let Some(map) = load_map(&map_file_path) {
+                    if let Some(map) = map::load(&map_file_path) {
                         let map_texture = Texture2D::from_file_with_format(&map.image, None);
 
                         self.state = EditorState::Editing(MapEditor {
@@ -453,7 +412,7 @@ impl Screen for Editor {
                 editor.viewer.update();
 
                 if let Some(Some(path)) = editor.save_task.take() {
-                    save_map(editor.map_data.clone(), &path).unwrap();
+                    map::save(editor.map_data.clone(), &path).unwrap();
                     editor.save_file_path = Some(path)
                 }
             }
@@ -529,8 +488,8 @@ impl From<Region> for EditorRegion {
     }
 }
 
-impl From<Vertex> for macroquad::math::Vec2 {
-    fn from(value: Vertex) -> Self {
+impl From<Point> for macroquad::math::Vec2 {
+    fn from(value: Point) -> Self {
         Self {
             x: value.x,
             y: value.y,

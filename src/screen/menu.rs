@@ -1,5 +1,5 @@
 use super::Screen;
-use crate::screens::{ScreenType, Transition};
+use crate::screen::{ScreenType, Transition};
 use egui_macroquad::egui;
 
 #[derive(Default)]

@@ -1,11 +1,10 @@
 use crate::{
-    screen::{Screen, Transition},
-    map::{self, viewer::MapViewer, data::*}
+    map::{self, data::*, viewer::MapViewer}, screen::{Screen, Transition}
 };
 
 use egui_macroquad::{
     egui,
-    macroquad::{self, prelude::*},
+    macroquad::prelude::*,
 };
 
 use std::{
@@ -14,29 +13,23 @@ use std::{
     thread::JoinHandle,
 };
 
-#[derive(Debug, Default, Clone)]
-struct EditorRegion {
-    name: String,
-    vertices: Vec<Point>,
-    visible: bool,
+#[derive(Default)]
+struct BackgroundTask<T> {
+    handle: Option<JoinHandle<T>>,
 }
 
-#[derive(Debug, Default, Clone)]
-struct EditorCategory {
-    name: String,
-    regions: Vec<EditorRegion>,
-    visible: bool,
-}
-
-#[derive(Debug, Default, Clone)]
-struct EditorMapData {
-    name: String,
-    image: Vec<u8>,
-    categories: Vec<EditorCategory>,
+impl<T> BackgroundTask<T> {
+    fn take(&mut self) -> Option<T> {
+        self.handle
+            .as_ref()
+            .is_some_and(JoinHandle::is_finished)
+            .then(|| self.handle.take().unwrap())
+            .and_then(|v| v.join().ok())
+    }
 }
 
 struct MapEditor {
-    map_data: EditorMapData,
+    map_data: MapData,
     viewer: MapViewer,
     save_file_path: Option<PathBuf>,
     save_task: BackgroundTask<Option<PathBuf>>,
@@ -79,10 +72,10 @@ impl MapEditor {
 
             text_edit.context_menu(|ui| {
                 if ui.button("Add Region").clicked() {
-                    category.regions.push(EditorRegion {
-                        name: format!("Region {}", category.regions.len() + 1),
-                        ..Default::default()
-                    });
+                    // category.objects.push(EditorRegion {
+                    //     name: format!("Region {}", category.objects.len() + 1),
+                    //     ..Default::default()
+                    // });
 
                     ui.close_menu();
                 }
@@ -98,8 +91,6 @@ impl MapEditor {
                     ui.close_menu();
                 }
             });
-
-            ui.checkbox(&mut category.visible, "");
         });
     }
 }
@@ -120,21 +111,6 @@ enum EditorState {
     Selecting(MapSelector),
     Editing(MapEditor),
     Creator(MapCreator),
-}
-
-#[derive(Default)]
-struct BackgroundTask<T> {
-    handle: Option<std::thread::JoinHandle<T>>,
-}
-
-impl<T> BackgroundTask<T> {
-    fn take(&mut self) -> Option<T> {
-        self.handle
-            .as_ref()
-            .is_some_and(JoinHandle::is_finished)
-            .then(|| self.handle.take().unwrap())
-            .and_then(|v| v.join().ok())
-    }
 }
 
 pub struct Editor {
@@ -268,7 +244,7 @@ impl Screen for Editor {
 
                                         const INDENT: f32 = 18.0;
 
-                                        if !editor.map_data.categories[index].regions.is_empty() {
+                                        if !editor.map_data.categories[index].objects.is_empty() {
                                             let response = ui.allocate_response(egui::vec2(INDENT, ui.spacing().interact_size.y), egui::Sense::click());
 
                                             if response.clicked() {
@@ -307,10 +283,10 @@ impl Screen for Editor {
                                     });
 
                                     state.show_body_indented(&header_res.response, ui, |ui| {
-                                        for region in &editor.map_data.categories[index].regions {
+                                        for region in &editor.map_data.categories[index].objects {
                                             ui.horizontal(|ui| {
                                                 ui.add_space(8.0);
-                                                if ui.selectable_label(false, &region.name).clicked() {
+                                                if ui.selectable_label(false, region.name()).clicked() {
                                                     todo!()
                                                 }
                                             });
@@ -426,73 +402,6 @@ impl Screen for Editor {
             }
 
             _ => {}
-        }
-    }
-}
-
-impl From<EditorMapData> for MapData {
-    fn from(value: EditorMapData) -> Self {
-        Self {
-            name: value.name,
-            categories: value.categories.into_iter().map(Into::into).collect(),
-            image: value.image,
-        }
-    }
-}
-
-impl From<EditorCategory> for Category {
-    fn from(value: EditorCategory) -> Self {
-        Self {
-            name: value.name,
-            regions: value.regions.into_iter().map(Into::into).collect(),
-        }
-    }
-}
-
-impl From<EditorRegion> for Region {
-    fn from(value: EditorRegion) -> Self {
-        Self {
-            name: value.name,
-            vertices: value.vertices,
-        }
-    }
-}
-
-impl From<MapData> for EditorMapData {
-    fn from(value: MapData) -> Self {
-        Self {
-            name: value.name,
-            image: value.image,
-            categories: value.categories.into_iter().map(Into::into).collect(),
-        }
-    }
-}
-
-impl From<Category> for EditorCategory {
-    fn from(value: Category) -> Self {
-        Self {
-            name: value.name,
-            regions: value.regions.into_iter().map(Into::into).collect(),
-            visible: false,
-        }
-    }
-}
-
-impl From<Region> for EditorRegion {
-    fn from(value: Region) -> Self {
-        Self {
-            name: value.name,
-            vertices: value.vertices,
-            visible: false,
-        }
-    }
-}
-
-impl From<Point> for macroquad::math::Vec2 {
-    fn from(value: Point) -> Self {
-        Self {
-            x: value.x,
-            y: value.y,
         }
     }
 }

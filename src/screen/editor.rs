@@ -71,14 +71,7 @@ impl MapEditor {
             }
 
             text_edit.context_menu(|ui| {
-                if ui.button("Add Region").clicked() {
-                    // category.objects.push(EditorRegion {
-                    //     name: format!("Region {}", category.objects.len() + 1),
-                    //     ..Default::default()
-                    // });
-
-                    ui.close_menu();
-                }
+                // TODO: add object menu
 
                 if ui.button("Rename").clicked() {
                     self.renaming = Some(text_edit.id);
@@ -209,23 +202,6 @@ impl Screen for Editor {
                     .show(ctx, |ui| {
                         ctx.options_mut(|options| options.line_scroll_speed = 5000.0);
 
-                        // ui.interact(
-                        //     ui.available_rect_before_wrap(),
-                        //     "add obj".into(),
-                        //     egui::Sense::click(),
-                        // )
-                        // .context_menu(|ui| {
-                        //     ui.label("New...");
-                        //     if ui.button("Category").clicked() {
-                        //         editor.map_data.categories.push(EditorCategory {
-                        //             name: format!("Category {}", editor.map_data.categories.len() + 1),
-                        //             ..Default::default()
-                        //         });
-
-                        //         ui.close_menu();
-                        //     };
-                        // });
-
                         egui::ScrollArea::vertical()
                             .auto_shrink(false)
                             .show(ui, |ui| {
@@ -297,6 +273,23 @@ impl Screen for Editor {
                                 if let Some(index) = category_to_delete {
                                     editor.map_data.categories.remove(index);
                                 }
+
+                                ui.interact(
+                                    ui.available_rect_before_wrap(),
+                                    ui.next_auto_id(),
+                                    egui::Sense::click(),
+                                )
+                                .context_menu(|ui| {
+                                    ui.label("New...");
+                                    if ui.button("Category").clicked() {
+                                        editor.map_data.categories.push(Category {
+                                            name: format!("Category {}", editor.map_data.categories.len() + 1),
+                                            ..Default::default()
+                                        });
+
+                                        ui.close_menu();
+                                    };
+                                });
                             });
                     });
 

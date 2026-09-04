@@ -1,18 +1,20 @@
-use egui_macroquad::macroquad::{self, prelude::*};
+use macroquad::prelude::*;
 
 mod screen;
 mod map;
+mod gui;
 
 use crate::screen::{ScreenType, Transition};
 
 #[macroquad::main("Kontur")]
 async fn main() {
     let mut screen = ScreenType::Menu.build();
+    let mut gui = gui::Gui::new();
 
     loop {
         let transition = {
             let mut result = Transition::None;
-            egui_macroquad::ui(|ctx| result = screen.ui(ctx));
+            gui.run(|ui| result = screen.ui(ui));
             result
         };
 
@@ -24,7 +26,7 @@ async fn main() {
 
         screen.update();
         screen.render();
-        egui_macroquad::draw();
+        gui.draw();
 
         next_frame().await
     }

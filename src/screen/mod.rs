@@ -13,7 +13,7 @@ pub enum Transition {
 pub trait Screen {
     fn update(&mut self) {}
     fn render(&self) {}
-    fn ui(&mut self, _ctx: &egui_macroquad::egui::Context) -> Transition {
+    fn ui(&mut self, _ui: &mut egui::Ui) -> Transition {
         Transition::None
     }
 }

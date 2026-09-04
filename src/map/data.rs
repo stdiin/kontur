@@ -8,7 +8,7 @@ pub struct Point {
     pub y: f32,
 }
 
-impl From<Point> for egui_macroquad::macroquad::math::Vec2 {
+impl From<Point> for macroquad::math::Vec2 {
     fn from(value: Point) -> Self {
         Self {
             x: value.x,

@@ -1,4 +1,4 @@
-use egui_macroquad::macroquad::prelude::*;
+use macroquad::prelude::*;
 
 pub struct MapViewer {
     camera: Camera2D,

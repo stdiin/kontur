@@ -1,6 +1,6 @@
 use super::Screen;
 use crate::{screen::Transition, map::viewer::MapViewer};
-use egui_macroquad::{egui, macroquad::prelude::*};
+use macroquad::prelude::*;
 
 pub struct Quiz {
     viewer: MapViewer,
@@ -18,19 +18,22 @@ impl Default for Quiz {
 }
 
 impl Screen for Quiz {
-    fn ui(&mut self, ctx: &egui::Context) -> Transition {
-        egui::CentralPanel::default()
-            .frame(egui::Frame::new().multiply_with_opacity(1.0))
-            .show(ctx, |ui| {
-                let rect = ui.max_rect();
+    fn ui(&mut self, ui: &mut egui::Ui) -> Transition {
+        // egui::CentralPanel::default()
+        //     .frame(egui::Frame::new().multiply_with_opacity(1.0))
+        //     .show(ctx, |ui| {
+        //         let rect = ui.max_rect();
 
-                self.viewer.set_viewport(Rect::new(
-                    rect.left(),
-                    rect.top(),
-                    rect.right(),
-                    rect.bottom(),
-                ));
-            });
+        //         self.viewer.set_viewport(Rect::new(
+        //             rect.left(),
+        //             rect.top(),
+        //             rect.right(),
+        //             rect.bottom(),
+        //         ));
+        //     });
+        egui::CentralPanel::no_frame().show(ui, |ui| {
+            
+        });
 
         Transition::None
     }

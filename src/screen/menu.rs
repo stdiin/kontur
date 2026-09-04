@@ -1,17 +1,16 @@
 use super::Screen;
 use crate::screen::{ScreenType, Transition};
-use egui_macroquad::egui;
 
 #[derive(Default)]
 pub struct Menu;
 
 impl Screen for Menu {
-    fn ui(&mut self, ctx: &egui::Context) -> Transition {
+    fn ui(&mut self, ui: &mut egui::Ui) -> Transition {
         let mut transition = Transition::None;
 
         egui::Area::new("menu".into())
             .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
-            .show(ctx, |ui| {
+            .show(ui, |ui| {
                 ui.vertical_centered(|ui| {
                     ui.label(egui::RichText::new("Kontur").size(75.0));
 

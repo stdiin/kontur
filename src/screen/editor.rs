@@ -2,10 +2,7 @@ use crate::{
     map::{self, data::*, viewer::MapViewer}, screen::{Screen, Transition}
 };
 
-use egui_macroquad::{
-    egui,
-    macroquad::prelude::*,
-};
+use macroquad::prelude::*;
 
 use std::{
     fs,
@@ -62,7 +59,6 @@ impl MapEditor {
                 egui::TextEdit::singleline(&mut category.name)
                     .clip_text(false)
                     .desired_width(0.0)
-                    .frame(false)
                     .interactive(self.renaming == Some(id)),
             );
 
@@ -76,12 +72,12 @@ impl MapEditor {
                 if ui.button("Rename").clicked() {
                     self.renaming = Some(text_edit.id);
                     text_edit.request_focus();
-                    ui.close_menu();
+                    ui.close();
                 }
 
                 if ui.button("Delete").clicked() {
                     *category_to_delete = Some(index);
-                    ui.close_menu();
+                    ui.close();
                 }
             });
         });
@@ -119,14 +115,14 @@ impl Default for Editor {
 }
 
 impl Screen for Editor {
-    fn ui(&mut self, ctx: &egui::Context) -> Transition {
+    fn ui(&mut self, ui: &mut egui::Ui) -> Transition {
         let mut next_state: Option<EditorState> = None;
 
         match &mut self.state {
             EditorState::Creator(creator) => {
                 egui::Area::new("map creator".into())
                     .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
-                    .show(ctx, |ui| {
+                    .show(ui, |ui| {
                         ui.vertical_centered(|ui| {
                             ui.label("Map name");
                             ui.text_edit_singleline(&mut creator.map_data.name);
@@ -172,11 +168,11 @@ impl Screen for Editor {
             }
 
             EditorState::Editing(editor) => {
-                egui::TopBottomPanel::top("topbar").show(ctx, |ui| {
-                    egui::menu::bar(ui, |ui| {
+                egui::Panel::top("topbar").show(ui, |ui| {
+                    egui::MenuBar::new().ui(ui, |ui| {
                         ui.menu_button("File", |ui| {
                             if ui.button("Save").clicked() {
-                                ui.close_menu();
+                                ui.close();
                                 match &editor.save_file_path {
                                     Some(path) => map::save(editor.map_data.clone(), path).unwrap(),
 
@@ -187,21 +183,19 @@ impl Screen for Editor {
                             }
 
                             if ui.button("Save As").clicked() {
-                                ui.close_menu();
+                                ui.close();
                                 editor.prompt_save();
                             }
-                        });
-
-                        ui.separator();
-                        ui.label(&editor.map_data.name)
+                        })
                     });
+                    
+                    ui.separator();
+                    ui.label(&editor.map_data.name)
                 });
 
-                egui::SidePanel::right("explorer")
-                    .default_width(120.0)
-                    .show(ctx, |ui| {
-                        ctx.options_mut(|options| options.line_scroll_speed = 5000.0);
-
+                egui::Panel::right("explorer")
+                    .default_size(120.0)
+                    .show(ui, |ui| {
                         egui::ScrollArea::vertical()
                             .auto_shrink(false)
                             .show(ui, |ui| {
@@ -209,7 +203,7 @@ impl Screen for Editor {
 
                                 for index in 0..editor.map_data.categories.len() {
                                     let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
-                                        ctx,
+                                        ui,
                                         ui.make_persistent_id(("category", index)),
                                         false
                                     );
@@ -287,7 +281,7 @@ impl Screen for Editor {
                                             ..Default::default()
                                         });
 
-                                        ui.close_menu();
+                                        ui.close();
                                     };
                                 });
                             });
@@ -295,7 +289,7 @@ impl Screen for Editor {
 
                 egui::CentralPanel::default()
                     .frame(egui::Frame::new())
-                    .show(ctx, |ui| {
+                    .show(ui, |ui| {
                         let rect = ui.max_rect();
 
                         editor.viewer.set_viewport(Rect::new(
@@ -310,7 +304,7 @@ impl Screen for Editor {
             EditorState::Selecting(selector) => {
                 egui::Area::new("map_selection".into())
                     .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
-                    .show(ctx, |ui| {
+                    .show(ui, |ui| {
                         if ui
                             .add_sized(
                                 [200.0, 100.0],

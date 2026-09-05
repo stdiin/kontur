@@ -1,3 +1,4 @@
+use egui::Sense;
 use macroquad::prelude::*;
 use std::{fs, path::PathBuf, thread::JoinHandle};
 
@@ -53,10 +54,11 @@ impl MapEditor {
             let id = ui.next_auto_id();
             let text_edit = ui.add(
                 egui::TextEdit::singleline(&mut category.name)
+                    .frame(egui::Frame::new())
                     .clip_text(false)
                     .desired_width(0.0)
                     .interactive(self.renaming == Some(id)),
-            );
+            ).interact(Sense::click());
 
             if text_edit.lost_focus() {
                 self.renaming = None
@@ -169,6 +171,7 @@ impl Screen for Editor {
                         ui.menu_button("File", |ui| {
                             if ui.button("Save").clicked() {
                                 ui.close();
+
                                 match &editor.save_file_path {
                                     Some(path) => match map::save(editor.map_data.clone(), path) {
                                         Ok(()) => {}
@@ -187,11 +190,11 @@ impl Screen for Editor {
                                 ui.close();
                                 editor.prompt_save();
                             }
-                        })
+                        });
+                        
+                        ui.separator();
+                        ui.label(&editor.map_data.name)
                     });
-
-                    ui.separator();
-                    ui.label(&editor.map_data.name)
                 });
 
                 egui::Panel::right("explorer")

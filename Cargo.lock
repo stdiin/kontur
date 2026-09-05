@@ -136,6 +136,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d262e149917187838d5b42777c8253bcb64500067342904e7d429499a6f277e"
 dependencies = [
  "find-msvc-tools",
+ "jobserver",
+ "libc",
  "shlex",
 ]
 
@@ -241,7 +243,7 @@ version = "0.16.0"
 dependencies = [
  "bytemuck",
  "egui",
- "getrandom",
+ "getrandom 0.2.17",
  "log",
  "miniquad",
  "quad-rand",
@@ -418,6 +420,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "getrandom"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "300e883d756b2e4ec94e02791f39b04b522276138852cfc41d9fb7e904106099"
+dependencies = [
+ "cfg-if",
+ "libc",
+ "r-efi",
+]
+
+[[package]]
 name = "glam"
 version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -513,6 +526,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "jobserver"
+version = "0.1.35"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c00acbd29eabad4a2392fa0e921c874934dbbf4194312ad20f04a0ed67a3cb3"
+dependencies = [
+ "getrandom 0.4.3",
+ "libc",
+]
+
+[[package]]
 name = "js-sys"
 version = "0.3.104"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -532,6 +555,7 @@ dependencies = [
  "macroquad",
  "rfd",
  "rkyv",
+ "zstd",
 ]
 
 [[package]]
@@ -917,6 +941,12 @@ checksum = "1fbf4db142a473a8d80c26bbf18454ed458bf8d26c8219c331daecfdbd079001"
 dependencies = [
  "proc-macro2",
 ]
+
+[[package]]
+name = "r-efi"
+version = "6.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
 name = "rancor"
@@ -1439,3 +1469,31 @@ name = "zlib-rs"
 version = "0.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "34b31d188d9d685a4f9c7b46d6e36631b07058d2cfe190267adce54dc230bf12"
+
+[[package]]
+name = "zstd"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bf06bd8162af0734b344780deb55b42a2429ae430870d13fcc12f238e880fe6e"
+dependencies = [
+ "zstd-safe",
+]
+
+[[package]]
+name = "zstd-safe"
+version = "8.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae42c0555055784c70058d19ba8e275528e8a99a706684868ace5da4e716a4ab"
+dependencies = [
+ "zstd-sys",
+]
+
+[[package]]
+name = "zstd-sys"
+version = "2.1.0+zstd.1.5.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ef0a8027ec3ee71300ab3bcbcd0393f434aa72b91ca6d635a39941deae8eea0"
+dependencies = [
+ "cc",
+ "pkg-config",
+]

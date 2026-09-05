@@ -1,13 +1,9 @@
-use crate::{
-    map::{self, data::*, viewer::MapViewer}, screen::{Screen, Transition}
-};
-
 use macroquad::prelude::*;
+use std::{fs, path::PathBuf, thread::JoinHandle};
 
-use std::{
-    fs,
-    path::{PathBuf},
-    thread::JoinHandle,
+use crate::{
+    map::{self, data::*, viewer::MapViewer},
+    screen::{Screen, Transition},
 };
 
 #[derive(Default)]
@@ -174,7 +170,12 @@ impl Screen for Editor {
                             if ui.button("Save").clicked() {
                                 ui.close();
                                 match &editor.save_file_path {
-                                    Some(path) => map::save(editor.map_data.clone(), path).unwrap(),
+                                    Some(path) => match map::save(editor.map_data.clone(), path) {
+                                        Ok(()) => {}
+                                        Err(_) => {
+                                            // TODO: Add error handling
+                                        }
+                                    },
 
                                     None => {
                                         editor.prompt_save();
@@ -188,7 +189,7 @@ impl Screen for Editor {
                             }
                         })
                     });
-                    
+
                     ui.separator();
                     ui.label(&editor.map_data.name)
                 });
@@ -348,7 +349,7 @@ impl Screen for Editor {
         match &mut self.state {
             EditorState::Selecting(selector) => {
                 if let Some(Some(map_file_path)) = selector.import_task.take() {
-                    if let Some(map) = map::load(&map_file_path) {
+                    if let Ok(map) = map::load(&map_file_path) {
                         let map_texture = Texture2D::from_file_with_format(&map.image, None);
 
                         self.state = EditorState::Editing(MapEditor {
@@ -375,8 +376,14 @@ impl Screen for Editor {
                 editor.viewer.update();
 
                 if let Some(Some(path)) = editor.save_task.take() {
-                    map::save(editor.map_data.clone(), &path).unwrap();
-                    editor.save_file_path = Some(path)
+                    match map::save(editor.map_data.clone(), &path) {
+                        Ok(()) => {}
+                        Err(_) => {
+                            // TODO: Add error handling
+                        }
+                    };
+
+                    editor.save_file_path = Some(path);
                 }
             }
         }

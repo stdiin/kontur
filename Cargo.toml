@@ -3,20 +3,32 @@ name = "kontur"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+crate-type = ["cdylib", "lib"]
+
 [dependencies]
-egui = "0.36.1"
-egui-miniquad = { path = "egui-miniquad"}
-macroquad = "0.4.16"
 rkyv = "0.8.18"
 zstd = "0.14.0"
+eframe = { version = "0.36.2", default-features = false, features = [
+    "android-native-activity",
+    "wayland",
+    "default_fonts",
+    "wgpu",
+] }
 
-[target.'cfg(not(target_os = "android"))'.dependencies]
-rfd = "0.17.2"
+[target.'cfg(target_os = "android")'.dependencies]
+winit = "0.30.13"
 
-[package.metadata.android]
-assets = "assets"
+[[package.metadata.android.application.activity]]
+name = "android.app.NativeActivity"
 
-[profile.release]
-opt-level = "z"
-lto = true
-strip = true
+[[package.metadata.android.application.activity.meta_data]]
+name = "android.app.lib_name"
+value = "kontur"
+
+[[package.metadata.android.application.activity.intent_filter]]
+actions = ["android.intent.action.MAIN"]
+categories = ["android.intent.category.LAUNCHER"]
+
+[package.metadata.android.application]
+label = "Kontur"

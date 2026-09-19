@@ -1,15 +1,15 @@
-use eframe::egui;
+use eframe::egui::{self, DragPanButtons, Image, Rect, Scene, Sense, Widget, include_image};
 
 use crate::{map::viewer::MapViewer, screen::Screen};
 
 pub struct Quiz {
-    viewer: MapViewer
+    viewer: MapViewer,
 }
 
 impl Quiz {
     pub fn new(ctx: &egui::Context) -> Self {
         Self {
-            viewer: MapViewer::new(ctx)
+            viewer: MapViewer::new(ctx),
         }
     }
 }

@@ -1,4 +1,8 @@
+use crate::screen::{Screen, ScreenType, Transition};
 use eframe::egui;
+
+mod screen;
+mod map;
 
 #[cfg(target_os = "android")]
 #[unsafe(no_mangle)]
@@ -16,19 +20,29 @@ fn android_main(app: winit::platform::android::activity::AndroidApp) {
     .unwrap()
 }
 
-#[derive(Default)]
-pub struct App {}
+pub struct App {
+    screen: Box<dyn Screen>
+}
 
 impl App {
-    pub fn new(_cc: &eframe::CreationContext) -> Self {
-        Self::default()
+    pub fn new(cc: &eframe::CreationContext) -> Self {
+        egui_extras::install_image_loaders(&cc.egui_ctx);
+
+        Self {
+            screen: ScreenType::Menu.build(&cc.egui_ctx)
+        }
     }
 }
 
 impl eframe::App for App {
-    fn ui(&mut self, ui: &mut eframe::egui::Ui, _frame: &mut eframe::Frame) {
-        egui::Panel::top("status bar").show(ui, |ui| {
-            ui.label("test")
-        });
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        match self.screen.ui(ui) {
+            Transition::None => {}
+            Transition::Quit => ui.send_viewport_cmd(egui::ViewportCommand::Close),
+            Transition::Switch(next_screen) => self.screen = next_screen.build(ui.ctx()),
+        }
+
+        self.screen.update();
+        self.screen.render();
     }
 }

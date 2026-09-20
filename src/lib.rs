@@ -26,8 +26,6 @@ pub struct App {
 
 impl App {
     pub fn new(cc: &eframe::CreationContext) -> Self {
-        egui_extras::install_image_loaders(&cc.egui_ctx);
-
         Self {
             screen: ScreenType::Menu.build(&cc.egui_ctx)
         }

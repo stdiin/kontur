@@ -9,14 +9,13 @@ crate-type = ["cdylib", "lib"]
 [dependencies]
 rkyv = "0.8.18"
 zstd = "0.14.0"
+image = { version = "0.25", features = ["jpeg", "png"] }
 eframe = { version = "0.36.2", default-features = false, features = [
     "android-native-activity",
     "wayland",
     "default_fonts",
     "wgpu",
 ] }
-egui_extras = { version = "0.36.2", features = ["image"] }
-image = { version = "0.25", features = ["jpeg", "png"] }
 
 [target.'cfg(target_os = "android")'.dependencies]
 winit = "0.30.13"

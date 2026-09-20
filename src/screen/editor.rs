@@ -4,5 +4,5 @@ use crate::screen::Screen;
 pub struct Editor {}
 
 impl Screen for Editor {
-    
+
 }

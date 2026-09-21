@@ -14,10 +14,7 @@ pub enum Transition {
 
 pub trait Screen {
     fn update(&mut self) {}
-    fn render(&self) {}
-    fn ui(&mut self, _ui: &mut egui::Ui) -> Transition {
-        Transition::None
-    }
+    fn ui(&mut self, _ui: &mut egui::Ui) -> Transition;
 }
 
 pub enum ScreenType {
@@ -33,7 +30,7 @@ impl ScreenType {
     pub fn build(&self, ctx: &eframe::egui::Context) -> Box<dyn Screen> {
         match self {
             #[cfg(not(target_os = "android"))]
-            Self::Editor => Box::new(editor::Editor::default()),
+            Self::Editor => Box::new(editor::Editor::new()),
 
             Self::Quiz => Box::new(quiz::Quiz::new(ctx)),
             Self::Menu => Box::new(menu::Menu::default()),

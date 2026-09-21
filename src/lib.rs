@@ -4,22 +4,6 @@ use eframe::egui;
 mod screen;
 mod map;
 
-#[cfg(target_os = "android")]
-#[unsafe(no_mangle)]
-fn android_main(app: winit::platform::android::activity::AndroidApp) {
-    let options = eframe::NativeOptions {
-        android_app: Some(app),
-        ..Default::default()
-    };
-
-    eframe::run_native(
-        "Kontur",
-        options,
-        Box::new(|cc| Ok(Box::new(App::new(cc)))),
-    )
-    .unwrap()
-}
-
 pub struct App {
     screen: Box<dyn Screen>
 }
@@ -41,6 +25,21 @@ impl eframe::App for App {
         }
 
         self.screen.update();
-        self.screen.render();
     }
+}
+
+#[cfg(target_os = "android")]
+#[unsafe(no_mangle)]
+fn android_main(app: winit::platform::android::activity::AndroidApp) {
+    let options = eframe::NativeOptions {
+        android_app: Some(app),
+        ..Default::default()
+    };
+
+    eframe::run_native(
+        "Kontur",
+        options,
+        Box::new(|cc| Ok(Box::new(App::new(cc)))),
+    )
+    .unwrap()
 }

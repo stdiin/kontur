@@ -1,40 +1,25 @@
 use std::{io, fs, path::Path};
 use rkyv::{Serialize, Deserialize, Archive};
+use crate::map::object::MapObject;
 
-pub mod peak;
-pub mod river;
-pub mod region;
+pub mod object;
 pub mod viewer;
 
-#[derive(Archive, Serialize, Deserialize, Clone, Debug)]
-pub enum MapObject {
-    Peak(peak::Peak),
-    Region(region::Region),
-    River(river::River)
-}
-
-impl MapObject {
-    pub fn name(&self) -> &str {
-        match self {
-            Self::Peak(peak) => &peak.name,
-            Self::Region(region) => &region.name,
-            Self::River(river) => &river.name
-        }
-    }
-}
-
+#[allow(dead_code)]
 pub enum MapLoadError {
     IOError(io::Error),
     DecompressionError(io::Error),
     DeserializationError(rkyv::rancor::Error),
 }
 
+#[allow(dead_code)]
 pub enum MapSaveError {
     IOError(io::Error),
     CompressionError(io::Error),
     SerializationError(rkyv::rancor::Error),
 }
 
+#[allow(dead_code)]
 pub fn load(path: impl AsRef<Path>) -> Result<MapData, MapLoadError> {
     let path = path.as_ref();
     let bytes_compressed = fs::read(path).map_err(|e| MapLoadError::IOError(e))?;
@@ -46,6 +31,7 @@ pub fn load(path: impl AsRef<Path>) -> Result<MapData, MapLoadError> {
         .map_err(|e| MapLoadError::DeserializationError(e))
 }
 
+#[allow(dead_code)]
 pub fn save(map_data: impl Into<MapData>, path: impl AsRef<Path>) -> Result<(), MapSaveError> {
     let path = path.as_ref();
     let data = map_data.into();

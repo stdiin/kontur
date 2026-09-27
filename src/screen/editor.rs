@@ -29,7 +29,6 @@ impl Editor {
             .add_file_filter_extensions("map", vec!["map"])
             .add_file_filter_extensions("image", vec!["png", "jpg", "jpeg"])
             .show_all_files_filter(false)
-            // .default_file_filter("map")
             .add_save_extension("map", "map")
             .default_save_extension("map")
             .as_modal(true);
@@ -86,11 +85,15 @@ impl Screen for Editor {
                     .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
                     .show(ui, |ui| {
                         if ui.button("Import").clicked() {
+                            self.file_dialog.config_mut().default_file_filter = Some("map".into());
                             self.file_dialog.set_user_data(FileDialogAction::OpenMap);
                             self.file_dialog.pick_file();
                         }
 
                         if ui.button("New").clicked() {
+                            self.file_dialog.config_mut().default_file_filter =
+                                Some("image".into());
+                                
                             self.map_data = Some(MapData::default());
                             self.state = EditorState::Creating
                         }

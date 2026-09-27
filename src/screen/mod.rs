@@ -5,6 +5,7 @@ pub mod editor;
 
 pub mod menu;
 pub mod quiz;
+mod theme;
 
 pub enum Transition {
     None,

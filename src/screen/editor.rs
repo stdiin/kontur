@@ -1,7 +1,7 @@
-use std::path::PathBuf;
+use crate::{map::MapData, screen::Screen};
 use eframe::egui::{Align2, Area, MenuBar, Panel, Ui, Vec2};
 use egui_file_dialog::FileDialog;
-use crate::{map::MapData, screen::Screen};
+use std::path::PathBuf;
 
 #[allow(dead_code)]
 enum FileDialogAction {
@@ -10,18 +10,26 @@ enum FileDialogAction {
     SaveMap,
 }
 
+enum EditorState {
+    Editing,
+    Creating,
+    Selecting,
+}
+
 pub struct Editor {
     file_dialog: FileDialog,
     picked_path: Option<PathBuf>,
-    map_data: Option<MapData>
+    map_data: Option<MapData>,
+    state: EditorState,
 }
 
 impl Editor {
     pub fn new() -> Self {
         let file_dialog = FileDialog::new()
             .add_file_filter_extensions("map", vec!["map"])
-            .default_file_filter("map")
+            .add_file_filter_extensions("image", vec!["png", "jpg", "jpeg"])
             .show_all_files_filter(false)
+            // .default_file_filter("map")
             .add_save_extension("map", "map")
             .default_save_extension("map")
             .as_modal(true);
@@ -29,7 +37,8 @@ impl Editor {
         Self {
             file_dialog,
             picked_path: None,
-            map_data: None
+            map_data: None,
+            state: EditorState::Selecting,
         }
     }
 
@@ -57,11 +66,9 @@ impl Editor {
         if let Some(path) = self.file_dialog.take_picked() {
             self.picked_path = Some(path.to_path_buf());
 
-            println!("picked: {}", path.display());
-
             match self.file_dialog.user_data() {
-                Some(FileDialogAction::OpenMap) => println!("open map"),
-                Some(FileDialogAction::OpenImage) => println!("open image"),
+                Some(FileDialogAction::OpenMap) => {}
+                Some(FileDialogAction::OpenImage) => {}
                 Some(FileDialogAction::SaveMap) => println!("save map"),
                 None => {}
             };
@@ -73,21 +80,48 @@ impl Screen for Editor {
     fn ui(&mut self, ui: &mut Ui) -> super::Transition {
         self.process_file_dialog(ui);
 
-        if self.map_data.is_none() {
-            Area::new("map selection".into())
-                .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
-                .show(ui, |ui| {
-                    if ui.button("Import").clicked() {
-                        self.file_dialog.set_user_data(FileDialogAction::OpenMap);
-                        self.file_dialog.pick_file();
-                    }
+        match self.state {
+            EditorState::Selecting => {
+                Area::new("map selection".into())
+                    .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
+                    .show(ui, |ui| {
+                        if ui.button("Import").clicked() {
+                            self.file_dialog.set_user_data(FileDialogAction::OpenMap);
+                            self.file_dialog.pick_file();
+                        }
 
-                    if ui.button("New").clicked() {
-                        todo!()
-                    }
-            });
+                        if ui.button("New").clicked() {
+                            self.map_data = Some(MapData::default());
+                            self.state = EditorState::Creating
+                        }
+                    });
 
-            ui.disable();
+                ui.disable();
+            }
+
+            EditorState::Creating => {
+                let map_data = self.map_data.as_mut().unwrap();
+
+                Area::new("map creation".into())
+                    .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
+                    .show(ui, |ui| {
+                        ui.label("Map name");
+                        ui.text_edit_singleline(&mut map_data.name);
+                        ui.label("Image");
+                        ui.horizontal(|ui| {
+                            if ui.button("Pick").clicked() {
+                                self.file_dialog.set_user_data(FileDialogAction::OpenImage);
+                                self.file_dialog.pick_file();
+                            };
+
+                            if let Some(path) = &self.picked_path {
+                                ui.label(path.display().to_string());
+                            }
+                        });
+                    });
+            }
+
+            EditorState::Editing => {}
         }
 
         self.topbar(ui);

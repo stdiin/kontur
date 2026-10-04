@@ -6,6 +6,7 @@ pub mod object;
 pub mod viewer;
 
 #[allow(dead_code)]
+#[derive(Debug)]
 pub enum MapLoadError {
     IOError(io::Error),
     DecompressionError(io::Error),
@@ -13,6 +14,7 @@ pub enum MapLoadError {
 }
 
 #[allow(dead_code)]
+#[derive(Debug)]
 pub enum MapSaveError {
     IOError(io::Error),
     CompressionError(io::Error),

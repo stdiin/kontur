@@ -6,28 +6,22 @@ use eframe::egui::{Align2, Area, MenuBar, Panel, Ui, Vec2};
 use egui_file_dialog::FileDialog;
 use std::{fs, path::PathBuf};
 
-// #[allow(dead_code)]
-// enum FileDialogAction {
-//     OpenMap,
-//     OpenImage,
-//     SaveMap,
-// }
-
 enum EditorMode {
     Selecting,
     Editing {
         map_data: MapData,
         viewer: MapViewer,
+        map_save_path: Option<PathBuf>,
     },
     Creating {
         name: String,
         image_bytes: Option<Vec<u8>>,
+        picked_path: Option<PathBuf>,
     },
 }
 
 pub struct Editor {
     file_dialog: FileDialog,
-    picked_path: Option<PathBuf>,
     mode: EditorMode,
 }
 
@@ -43,76 +37,30 @@ impl Editor {
 
         Self {
             file_dialog,
-            picked_path: None,
             mode: EditorMode::Selecting,
-        }
-    }
-
-    fn topbar(&mut self, ui: &mut Ui) {
-        Panel::top("topbar").show(ui, |ui| {
-            MenuBar::new().ui(ui, |ui| {
-                ui.menu_button("File", |ui| {
-                    // TODO
-                    _ = ui.button("Save");
-
-                    if ui.button("Save As").clicked() {
-                        self.file_dialog.save_file();
-                    };
-                });
-
-                ui.separator();
-                ui.label("Map")
-            });
-        });
-    }
-
-    fn process_file_dialog(&mut self, ui: &mut Ui) {
-        self.file_dialog.update(ui);
-
-        if let Some(path) = self.file_dialog.take_picked() {
-            self.picked_path = Some(path.to_path_buf());
-
-            let mut next_mode = None;
-
-            match &mut self.mode {
-                EditorMode::Selecting => {
-                    let map_data = map::load(path).unwrap();
-                    let image = map_data.image.clone();
-                    next_mode = Some(EditorMode::Editing {
-                        map_data,
-                        viewer: MapViewer::new(ui, image),
-                    })
-                }
-                EditorMode::Creating {
-                    name: _,
-                    image_bytes,
-                } => {
-                    let bytes = fs::read(path).unwrap();
-                    *image_bytes = Some(bytes)
-                }
-                EditorMode::Editing {
-                    map_data: _,
-                    viewer: _,
-                } => {
-                    // TODO: add saving
-                }
-            }
-
-            if let Some(mode) = next_mode {
-                self.mode = mode
-            }
         }
     }
 }
 
 impl Screen for Editor {
     fn ui(&mut self, ui: &mut Ui) -> super::Transition {
-        self.process_file_dialog(ui);
+        self.file_dialog.update(ui);
 
         let mut next_mode = None;
 
         match &mut self.mode {
             EditorMode::Selecting => {
+                if let Some(path) = self.file_dialog.take_picked() {
+                    let map_data = map::load(&path).unwrap();
+                    let image = map_data.image.clone();
+
+                    next_mode = Some(EditorMode::Editing {
+                        map_data,
+                        viewer: MapViewer::new(ui, image),
+                        map_save_path: Some(path.to_path_buf()),
+                    })
+                }
+
                 Area::new("map selection".into())
                     .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
                     .show(ui, |ui| {
@@ -122,12 +70,10 @@ impl Screen for Editor {
                         }
 
                         if ui.button("New").clicked() {
-                            self.file_dialog.config_mut().default_file_filter =
-                                Some("image".into());
-
                             self.mode = EditorMode::Creating {
                                 name: "".to_string(),
                                 image_bytes: None,
+                                picked_path: None,
                             }
                         }
                     });
@@ -135,7 +81,17 @@ impl Screen for Editor {
                 ui.disable();
             }
 
-            EditorMode::Creating { name, image_bytes } => {
+            EditorMode::Creating {
+                name,
+                image_bytes,
+                picked_path,
+            } => {
+                if let Some(path) = self.file_dialog.take_picked() {
+                    let image = fs::read(&path).unwrap();
+                    *image_bytes = Some(image);
+                    *picked_path = Some(path)
+                }
+
                 Area::new("map creation".into())
                     .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
                     .show(ui, |ui| {
@@ -144,15 +100,17 @@ impl Screen for Editor {
                         ui.label("Image");
                         ui.horizontal(|ui| {
                             if ui.button("Pick").clicked() {
+                                self.file_dialog.config_mut().default_file_filter =
+                                    Some("image".into());
                                 self.file_dialog.pick_file();
                             };
 
-                            if let Some(path) = &self.picked_path {
+                            if let Some(path) = picked_path {
                                 ui.label(path.display().to_string());
                             }
                         });
 
-                        if ui.button("create").clicked() {
+                        if ui.button("Create").clicked() {
                             if let Some(bytes) = image_bytes
                                 && !name.is_empty()
                             {
@@ -163,21 +121,55 @@ impl Screen for Editor {
                                         ..Default::default()
                                     },
                                     viewer: MapViewer::new(ui, bytes),
+                                    map_save_path: None,
                                 });
                             }
                         }
                     });
+
+                ui.disable();
             }
 
             EditorMode::Editing {
-                map_data: _,
+                map_save_path,
+                map_data,
                 viewer,
             } => {
+                if let Some(path) = self.file_dialog.take_picked() {
+                    map::save(map_data.clone(), path).unwrap();
+                }
+
+                Panel::top("topbar").show(ui, |ui| {
+                    MenuBar::new().ui(ui, |ui| {
+                        ui.menu_button("File", |ui| {
+                            let mut saving_as_new = false;
+
+                            if ui.button("Save").clicked() {
+                                if let Some(path) = map_save_path {
+                                    map::save(map_data.clone(), path).unwrap();
+                                } else {
+                                    saving_as_new = true;
+                                }
+                            };
+
+                            if ui.button("Save As").clicked() {
+                                saving_as_new = true;
+                            };
+
+                            if saving_as_new {
+                                self.file_dialog.config_mut().default_file_name = map_data.name.replace(" ", "_");
+                                self.file_dialog.save_file();
+                            }
+                        });
+
+                        ui.separator();
+                        ui.label("Map")
+                    });
+                });
+
                 viewer.render(ui);
             }
         }
-
-        self.topbar(ui);
 
         if let Some(mode) = next_mode {
             self.mode = mode

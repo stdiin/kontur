@@ -1,10 +1,18 @@
 use crate::{
-    map::{self, MapData, viewer::MapViewer},
+    map::{self, Category, MapData, viewer::MapViewer},
     screen::Screen,
 };
 use eframe::egui::{Align2, Area, MenuBar, Panel, Ui, Vec2};
 use egui_file_dialog::FileDialog;
+use egui_ltreeview::{NodeBuilder, TreeView};
 use std::{fs, path::PathBuf};
+
+#[derive(Default)]
+struct RenamingState {
+    index: usize,
+    buffer: String,
+    is_new: bool
+}
 
 enum EditorMode {
     Selecting,
@@ -12,6 +20,7 @@ enum EditorMode {
         map_data: MapData,
         viewer: MapViewer,
         map_save_path: Option<PathBuf>,
+        renaming: Option<RenamingState>,
     },
     Creating {
         name: String,
@@ -58,6 +67,7 @@ impl Screen for Editor {
                         map_data,
                         viewer: MapViewer::new(ui, image),
                         map_save_path: Some(path.to_path_buf()),
+                        renaming: None,
                     })
                 }
 
@@ -122,6 +132,7 @@ impl Screen for Editor {
                                     },
                                     viewer: MapViewer::new(ui, bytes),
                                     map_save_path: None,
+                                    renaming: None,
                                 });
                             }
                         }
@@ -134,6 +145,7 @@ impl Screen for Editor {
                 map_save_path,
                 map_data,
                 viewer,
+                renaming,
             } => {
                 if let Some(path) = self.file_dialog.take_picked() {
                     map::save(map_data.clone(), path).unwrap();
@@ -157,7 +169,8 @@ impl Screen for Editor {
                             };
 
                             if saving_as_new {
-                                self.file_dialog.config_mut().default_file_name = map_data.name.replace(" ", "_");
+                                self.file_dialog.config_mut().default_file_name =
+                                    map_data.name.replace(" ", "_");
                                 self.file_dialog.save_file();
                             }
                         });
@@ -166,6 +179,80 @@ impl Screen for Editor {
                         ui.label("Map")
                     });
                 });
+
+                let mut next_renaming = None;
+                let mut stop_renaming = false;
+                let mut new_category = false;
+
+                Panel::right("explorer").show(ui, |ui| {
+                    TreeView::new("explorer".into())
+                        .fallback_context_menu(|ui, _| {
+                            if ui.button("New category").clicked() {
+                                new_category = true;
+                            }
+                        })
+                        .show(ui, |builder| {
+                            for (index, category) in map_data.categories.iter().enumerate() {
+                                builder.node(
+                                    NodeBuilder::dir(index)
+                                        .label_ui(|ui| {
+                                            if let Some(renaming) = renaming
+                                                && renaming.index == index
+                                            {
+                                                let response = ui.text_edit_singleline(&mut renaming.buffer);
+
+                                                if renaming.is_new {
+                                                    response.request_focus();
+                                                    renaming.is_new = false;
+                                                }
+
+                                                if response.lost_focus() {
+                                                    stop_renaming = true;
+                                                };
+                                            } else {
+                                                ui.label(&category.name);
+                                            }
+                                        })
+                                        .context_menu(|ui| {
+                                            if ui.button("Rename").clicked() {
+                                                next_renaming = Some(RenamingState {
+                                                    index,
+                                                    is_new: true,
+                                                    buffer: category.name.clone()
+                                                });
+                                            }
+                                        }),
+                                );
+
+                                for (index, object) in category.objects.iter().enumerate() {
+                                    builder.leaf(index, object.name());
+                                }
+
+                                builder.close_dir();
+                            }
+                        });
+                });
+
+                if new_category {
+                    map_data.categories.push(Category::default());
+                    *renaming = Some(RenamingState {
+                        index: map_data.categories.len() - 1,
+                        is_new: true,
+                        ..Default::default()
+                    });
+                }
+
+                if let Some(next_renaming) = next_renaming {
+                    *renaming = Some(next_renaming);
+                }
+
+                if stop_renaming && let Some(now_renaming) = renaming {
+                    if let Some(category) = map_data.categories.get_mut(now_renaming.index) {
+                        category.name = now_renaming.buffer.clone();
+                    }
+
+                    *renaming = None;
+                }
 
                 viewer.render(ui);
             }

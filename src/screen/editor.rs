@@ -1,17 +1,138 @@
 use crate::{
-    map::{self, Category, MapData, viewer::MapViewer},
+    map::{
+        self, Category, MapData,
+        object::{MapObject, MapObjectKind},
+        viewer::MapViewer,
+    },
     screen::Screen,
 };
 use eframe::egui::{Align2, Area, MenuBar, Panel, Ui, Vec2};
 use egui_file_dialog::FileDialog;
 use egui_ltreeview::{NodeBuilder, TreeView};
+use slotmap::{SlotMap, new_key_type};
 use std::{fs, path::PathBuf};
 
-#[derive(Default)]
-struct RenamingState {
-    index: usize,
-    buffer: String,
-    is_new: bool
+new_key_type! {struct NodeId;}
+
+enum NodeKind {
+    Category,
+    Object(MapObjectKind),
+}
+
+struct Node {
+    parent_id: Option<NodeId>,
+    children: Vec<NodeId>,
+    name: String,
+    kind: NodeKind,
+}
+
+struct EditorStorage {
+    nodes: SlotMap<NodeId, Node>,
+    roots: Vec<NodeId>,
+}
+
+impl EditorStorage {
+    fn new(map_data: &MapData) -> Self {
+        let mut storage = Self {
+            nodes: SlotMap::with_key(),
+            roots: Vec::new(),
+        };
+
+        for category in &map_data.categories {
+            if let Some(id) = storage.add_node(None, NodeKind::Category, category.name.to_string())
+            {
+                for object in &category.objects {
+                    storage.add_node(
+                        Some(id),
+                        NodeKind::Object(object.kind.clone()),
+                        object.name.to_string(),
+                    );
+                }
+            }
+        }
+
+        storage
+    }
+
+    fn categories(&self) -> Vec<Category> {
+        self.roots
+            .iter()
+            .filter_map(|id| {
+                let node = self.nodes.get(*id)?;
+
+                Some(Category {
+                    name: node.name.clone(),
+                    objects: node
+                        .children
+                        .iter()
+                        .filter_map(|id| {
+                            let child = self.nodes.get(*id)?;
+                            if let NodeKind::Object(kind) = &child.kind {
+                                Some(MapObject {
+                                    name: child.name.clone(),
+                                    kind: kind.clone(),
+                                })
+                            } else {
+                                None
+                            }
+                        })
+                        .collect(),
+                })
+            })
+            .collect()
+    }
+
+    fn add_node(
+        &mut self,
+        parent_id: Option<NodeId>,
+        kind: NodeKind,
+        name: String,
+    ) -> Option<NodeId> {
+        if let Some(pid) = parent_id
+            && !self.nodes.contains_key(pid)
+        {
+            return None;
+        }
+
+        let id = self.nodes.insert(Node {
+            name,
+            kind,
+            parent_id,
+            children: Vec::new(),
+        });
+
+        match parent_id {
+            Some(pid) => {
+                if let Some(parent) = self.nodes.get_mut(pid) {
+                    parent.children.push(id);
+                }
+            }
+            None => self.roots.push(id),
+        }
+
+        Some(id)
+    }
+
+    fn remove_node(&mut self, id: NodeId) {
+        if let Some(node) = self.nodes.remove(id) {
+            match node.parent_id {
+                Some(pid) => {
+                    if let Some(parent) = self.nodes.get_mut(pid) {
+                        parent.children.retain(|v| *v != id);
+                    }
+                }
+                None => self.roots.retain(|v| *v != id),
+            }
+
+            let mut to_remove = node.children;
+
+            while let Some(current_id) = to_remove.pop() {
+                if let Some(node) = self.nodes.remove(current_id) {
+                    to_remove.extend(node.children);
+                }
+            }
+        }
+    }
 }
 
 enum EditorMode {
@@ -20,7 +141,7 @@ enum EditorMode {
         map_data: MapData,
         viewer: MapViewer,
         map_save_path: Option<PathBuf>,
-        renaming: Option<RenamingState>,
+        storage: EditorStorage,
     },
     Creating {
         name: String,
@@ -64,10 +185,10 @@ impl Screen for Editor {
                     let image = map_data.image.clone();
 
                     next_mode = Some(EditorMode::Editing {
-                        map_data,
                         viewer: MapViewer::new(ui, image),
                         map_save_path: Some(path.to_path_buf()),
-                        renaming: None,
+                        storage: EditorStorage::new(&map_data),
+                        map_data,
                     })
                 }
 
@@ -124,15 +245,17 @@ impl Screen for Editor {
                             if let Some(bytes) = image_bytes
                                 && !name.is_empty()
                             {
+                                let map_data = MapData {
+                                    name: name.to_owned(),
+                                    image: bytes.to_owned(),
+                                    ..Default::default()
+                                };
+
                                 next_mode = Some(EditorMode::Editing {
-                                    map_data: MapData {
-                                        name: name.to_owned(),
-                                        image: bytes.to_owned(),
-                                        ..Default::default()
-                                    },
                                     viewer: MapViewer::new(ui, bytes),
                                     map_save_path: None,
-                                    renaming: None,
+                                    storage: EditorStorage::new(&map_data),
+                                    map_data,
                                 });
                             }
                         }
@@ -145,7 +268,7 @@ impl Screen for Editor {
                 map_save_path,
                 map_data,
                 viewer,
-                renaming,
+                storage,
             } => {
                 if let Some(path) = self.file_dialog.take_picked() {
                     map::save(map_data.clone(), path).unwrap();
@@ -180,15 +303,11 @@ impl Screen for Editor {
                     });
                 });
 
-                let mut next_renaming = None;
-                let mut stop_renaming = false;
-                let mut new_category = false;
-
                 Panel::right("explorer").show(ui, |ui| {
                     TreeView::new("explorer".into())
                         .fallback_context_menu(|ui, _| {
                             if ui.button("New category").clicked() {
-                                new_category = true;
+                                // NEW CATEGORY
                             }
                         })
                         .show(ui, |builder| {
@@ -196,63 +315,40 @@ impl Screen for Editor {
                                 builder.node(
                                     NodeBuilder::dir(index)
                                         .label_ui(|ui| {
-                                            if let Some(renaming) = renaming
-                                                && renaming.index == index
-                                            {
-                                                let response = ui.text_edit_singleline(&mut renaming.buffer);
-
-                                                if renaming.is_new {
-                                                    response.request_focus();
-                                                    renaming.is_new = false;
-                                                }
-
-                                                if response.lost_focus() {
-                                                    stop_renaming = true;
-                                                };
-                                            } else {
-                                                ui.label(&category.name);
-                                            }
+                                            // RENAMING
+                                            //                                             if let Some(renaming) = renaming
+                                            //                                                 && renaming.index == index
+                                            //                                             {
+                                            //                                                 let response =
+                                            //                                                     ui.text_edit_singleline(&mut renaming.buffer);
+                                            //
+                                            //                                                 if renaming.is_new {
+                                            //                                                     response.request_focus();
+                                            //                                                     renaming.is_new = false;
+                                            //                                                 }
+                                            //
+                                            //                                                 if response.lost_focus() {
+                                            //                                                     stop_renaming = true;
+                                            //                                                 };
+                                            //                                             } else {
+                                            //                                                 ui.label(&category.name);
+                                            //                                             }
                                         })
                                         .context_menu(|ui| {
                                             if ui.button("Rename").clicked() {
-                                                next_renaming = Some(RenamingState {
-                                                    index,
-                                                    is_new: true,
-                                                    buffer: category.name.clone()
-                                                });
+                                                // START RENAMING
                                             }
                                         }),
                                 );
 
                                 for (index, object) in category.objects.iter().enumerate() {
-                                    builder.leaf(index, object.name());
+                                    // builder.leaf(index, object.name);
                                 }
 
                                 builder.close_dir();
                             }
                         });
                 });
-
-                if new_category {
-                    map_data.categories.push(Category::default());
-                    *renaming = Some(RenamingState {
-                        index: map_data.categories.len() - 1,
-                        is_new: true,
-                        ..Default::default()
-                    });
-                }
-
-                if let Some(next_renaming) = next_renaming {
-                    *renaming = Some(next_renaming);
-                }
-
-                if stop_renaming && let Some(now_renaming) = renaming {
-                    if let Some(category) = map_data.categories.get_mut(now_renaming.index) {
-                        category.name = now_renaming.buffer.clone();
-                    }
-
-                    *renaming = None;
-                }
 
                 viewer.render(ui);
             }

@@ -1,3 +1,4 @@
+#[cfg(target_os = "android")]
 #[unsafe(no_mangle)]
 fn android_main(app: winit::platform::android::activity::AndroidApp) {
     let options = eframe::NativeOptions {

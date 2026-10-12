@@ -6,13 +6,23 @@ use crate::{
     },
     screen::Screen,
 };
-use eframe::egui::{Align2, Area, MenuBar, Panel, Ui, Vec2};
+use eframe::egui::{self, Align2, Area, MenuBar, Panel, Ui, Vec2};
 use egui_file_dialog::FileDialog;
 use egui_ltreeview::{NodeBuilder, TreeView};
 use slotmap::{SlotMap, new_key_type};
-use std::{fs, path::PathBuf};
+use std::{
+    cell::RefCell,
+    fs,
+    path::{Path, PathBuf},
+};
 
 new_key_type! {struct NodeId;}
+
+enum ExplorerAction {
+    Rename((NodeId, String)),
+    Create((Option<NodeId>, NodeKind)),
+    Remove(NodeId),
+}
 
 enum NodeKind {
     Category,
@@ -135,14 +145,29 @@ impl EditorStorage {
     }
 }
 
+struct EditorData {
+    map_data: MapData,
+    viewer: MapViewer,
+    map_save_path: Option<PathBuf>,
+    storage: EditorStorage,
+    renaming: Option<(NodeId, String)>,
+}
+
+impl EditorData {
+    fn save(&self, path: &Path) {
+        let map_data = MapData {
+            name: self.map_data.name.clone(),
+            image: self.map_data.image.clone(),
+            categories: self.storage.categories(),
+        };
+
+        map::save(map_data, path).unwrap();
+    }
+}
+
 enum EditorMode {
     Selecting,
-    Editing {
-        map_data: MapData,
-        viewer: MapViewer,
-        map_save_path: Option<PathBuf>,
-        storage: EditorStorage,
-    },
+    Editing(EditorData),
     Creating {
         name: String,
         image_bytes: Option<Vec<u8>>,
@@ -184,12 +209,13 @@ impl Screen for Editor {
                     let map_data = map::load(&path).unwrap();
                     let image = map_data.image.clone();
 
-                    next_mode = Some(EditorMode::Editing {
+                    next_mode = Some(EditorMode::Editing(EditorData {
                         viewer: MapViewer::new(ui, image),
                         map_save_path: Some(path.to_path_buf()),
                         storage: EditorStorage::new(&map_data),
                         map_data,
-                    })
+                        renaming: None,
+                    }))
                 }
 
                 Area::new("map selection".into())
@@ -251,12 +277,13 @@ impl Screen for Editor {
                                     ..Default::default()
                                 };
 
-                                next_mode = Some(EditorMode::Editing {
+                                next_mode = Some(EditorMode::Editing(EditorData {
                                     viewer: MapViewer::new(ui, bytes),
                                     map_save_path: None,
                                     storage: EditorStorage::new(&map_data),
                                     map_data,
-                                });
+                                    renaming: None,
+                                }))
                             }
                         }
                     });
@@ -264,14 +291,9 @@ impl Screen for Editor {
                 ui.disable();
             }
 
-            EditorMode::Editing {
-                map_save_path,
-                map_data,
-                viewer,
-                storage,
-            } => {
+            EditorMode::Editing(data) => {
                 if let Some(path) = self.file_dialog.take_picked() {
-                    map::save(map_data.clone(), path).unwrap();
+                    data.save(&path);
                 }
 
                 Panel::top("topbar").show(ui, |ui| {
@@ -280,8 +302,8 @@ impl Screen for Editor {
                             let mut saving_as_new = false;
 
                             if ui.button("Save").clicked() {
-                                if let Some(path) = map_save_path {
-                                    map::save(map_data.clone(), path).unwrap();
+                                if let Some(path) = &data.map_save_path {
+                                    data.save(&path);
                                 } else {
                                     saving_as_new = true;
                                 }
@@ -293,7 +315,7 @@ impl Screen for Editor {
 
                             if saving_as_new {
                                 self.file_dialog.config_mut().default_file_name =
-                                    map_data.name.replace(" ", "_");
+                                    data.map_data.name.replace(" ", "_");
                                 self.file_dialog.save_file();
                             }
                         });
@@ -303,54 +325,154 @@ impl Screen for Editor {
                     });
                 });
 
+                let actions = RefCell::new(Vec::new());
+                let mut stop_renaming = false;
+                let mut start_renaming = None;
+
                 Panel::right("explorer").show(ui, |ui| {
                     TreeView::new("explorer".into())
                         .fallback_context_menu(|ui, _| {
                             if ui.button("New category").clicked() {
-                                // NEW CATEGORY
+                                actions
+                                    .borrow_mut()
+                                    .push(ExplorerAction::Create((None, NodeKind::Category)));
                             }
                         })
                         .show(ui, |builder| {
-                            for (index, category) in map_data.categories.iter().enumerate() {
-                                builder.node(
-                                    NodeBuilder::dir(index)
-                                        .label_ui(|ui| {
-                                            // RENAMING
-                                            //                                             if let Some(renaming) = renaming
-                                            //                                                 && renaming.index == index
-                                            //                                             {
-                                            //                                                 let response =
-                                            //                                                     ui.text_edit_singleline(&mut renaming.buffer);
-                                            //
-                                            //                                                 if renaming.is_new {
-                                            //                                                     response.request_focus();
-                                            //                                                     renaming.is_new = false;
-                                            //                                                 }
-                                            //
-                                            //                                                 if response.lost_focus() {
-                                            //                                                     stop_renaming = true;
-                                            //                                                 };
-                                            //                                             } else {
-                                            //                                                 ui.label(&category.name);
-                                            //                                             }
-                                        })
-                                        .context_menu(|ui| {
-                                            if ui.button("Rename").clicked() {
-                                                // START RENAMING
-                                            }
-                                        }),
-                                );
+                            for id in data.storage.roots.iter().copied() {
+                                let Some(category) = data.storage.nodes.get(id) else {
+                                    continue;
+                                };
 
-                                for (index, object) in category.objects.iter().enumerate() {
-                                    // builder.leaf(index, object.name);
+                                let mut category_node = NodeBuilder::dir(id)
+                                    .label(&category.name)
+                                    .context_menu(|ui| {
+                                        if ui.button("Rename").clicked() {
+                                            start_renaming = Some((id, category.name.clone()));
+                                        }
+
+                                        if ui.button("Delete").clicked() {
+                                            actions.borrow_mut().push(ExplorerAction::Remove(id));
+                                        }
+
+                                        ui.menu_button("Add object", |ui| {
+                                            if ui.button("Region").clicked() {
+                                                actions.borrow_mut().push(ExplorerAction::Create(
+                                                    (
+                                                        Some(id),
+                                                        NodeKind::Object(MapObjectKind::Region),
+                                                    ),
+                                                ));
+                                            }
+
+                                            if ui.button("Peak").clicked() {
+                                                actions.borrow_mut().push(ExplorerAction::Create(
+                                                    (
+                                                        Some(id),
+                                                        NodeKind::Object(MapObjectKind::Peak),
+                                                    ),
+                                                ));
+                                            }
+
+                                            if ui.button("River").clicked() {
+                                                actions.borrow_mut().push(ExplorerAction::Create(
+                                                    (
+                                                        Some(id),
+                                                        NodeKind::Object(MapObjectKind::River),
+                                                    ),
+                                                ));
+                                            }
+                                        });
+                                    });
+
+                                if let Some((renaming_id, text_buffer)) = &mut data.renaming
+                                    && *renaming_id == id
+                                {
+                                    category_node = category_node.label_ui(|ui| {
+                                        handle_rename_ui(
+                                            ui,
+                                            id,
+                                            &category.name,
+                                            text_buffer,
+                                            &actions,
+                                            &mut stop_renaming,
+                                        );
+                                    });
+                                }
+
+                                builder.node(category_node);
+
+                                for id in category.children.iter().copied() {
+                                    if let Some(object) = data.storage.nodes.get(id) {
+                                        let mut object_node = NodeBuilder::leaf(id)
+                                            .label(&object.name)
+                                            .context_menu(|ui| {
+                                                if ui.button("Rename").clicked() {
+                                                    start_renaming =
+                                                        Some((id, object.name.clone()));
+                                                }
+
+                                                if ui.button("Delete").clicked() {
+                                                    actions
+                                                        .borrow_mut()
+                                                        .push(ExplorerAction::Remove(id));
+                                                }
+                                            });
+
+                                        if let Some((renaming_id, text_buffer)) = &mut data.renaming
+                                            && *renaming_id == id
+                                        {
+                                            object_node = object_node.label_ui(|ui| {
+                                                handle_rename_ui(
+                                                    ui,
+                                                    id,
+                                                    &object.name,
+                                                    text_buffer,
+                                                    &actions,
+                                                    &mut stop_renaming,
+                                                );
+                                            });
+                                        }
+
+                                        builder.node(object_node);
+                                    }
                                 }
 
                                 builder.close_dir();
                             }
-                        });
+                        })
                 });
 
-                viewer.render(ui);
+                if stop_renaming {
+                    data.renaming = None;
+                }
+
+                if let Some(rename_state) = start_renaming {
+                    data.renaming = Some(rename_state);
+                }
+
+                for action in actions.into_inner() {
+                    match action {
+                        ExplorerAction::Create((parent_id, kind)) => {
+                            if let Some(id) = data.storage.add_node(parent_id, kind, String::new())
+                            {
+                                data.renaming = Some((id, String::new()))
+                            }
+                        }
+
+                        ExplorerAction::Rename((id, buffer)) => {
+                            if let Some(node) = data.storage.nodes.get_mut(id) {
+                                node.name = buffer
+                            }
+                        }
+
+                        ExplorerAction::Remove(id) => {
+                            data.storage.remove_node(id);
+                        }
+                    }
+                }
+
+                data.viewer.render(ui);
             }
         }
 
@@ -359,5 +481,36 @@ impl Screen for Editor {
         }
 
         super::Transition::None
+    }
+}
+
+fn handle_rename_ui(
+    ui: &mut Ui,
+    id: NodeId,
+    original_name: &str,
+    text_buffer: &mut String,
+    actions: &RefCell<Vec<ExplorerAction>>,
+    stop_renaming: &mut bool,
+) {
+    let response = ui.text_edit_singleline(text_buffer);
+
+    if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+        if original_name.is_empty() {
+            actions.borrow_mut().push(ExplorerAction::Remove(id));
+        }
+
+        *stop_renaming = true;
+    } else if response.lost_focus() {
+        let new_name = text_buffer.trim().to_string();
+
+        if !new_name.is_empty() {
+            actions
+                .borrow_mut()
+                .push(ExplorerAction::Rename((id, new_name)));
+        }
+
+        *stop_renaming = true;
+    } else {
+        response.request_focus();
     }
 }

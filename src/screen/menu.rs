@@ -121,8 +121,7 @@ impl Menu {
 
             ui.add_sized(
                 [width, height],
-                Button::new(RichText::new(label).size(16.0))
-                    .corner_radius(2.0)
+                Button::new(RichText::new(label).size(16.0)).corner_radius(2.0),
             )
         })
         .inner

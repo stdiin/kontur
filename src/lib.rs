@@ -1,17 +1,17 @@
 use crate::screen::{Screen, ScreenType, Transition};
 use eframe::egui;
 
-mod screen;
 mod map;
+mod screen;
 
 pub struct App {
-    screen: Box<dyn Screen>
+    screen: Box<dyn Screen>,
 }
 
 impl App {
     pub fn new(cc: &eframe::CreationContext) -> Self {
         Self {
-            screen: ScreenType::Menu.build(&cc.egui_ctx)
+            screen: ScreenType::Menu.build(&cc.egui_ctx),
         }
     }
 }

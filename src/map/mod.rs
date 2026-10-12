@@ -1,6 +1,6 @@
-use std::{io, fs, path::Path};
-use rkyv::{Serialize, Deserialize, Archive};
 use crate::map::object::MapObject;
+use rkyv::{Archive, Deserialize, Serialize};
+use std::{fs, io, path::Path};
 
 pub mod object;
 pub mod viewer;
@@ -45,7 +45,6 @@ pub fn save(map_data: impl Into<MapData>, path: impl AsRef<Path>) -> Result<(), 
 
     fs::write(path, compressed).map_err(|e| MapSaveError::IOError(e))
 }
-
 
 #[derive(Debug, Serialize, Deserialize, Archive, Clone, Copy)]
 pub struct Point {

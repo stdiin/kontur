@@ -24,26 +24,25 @@ pub enum MapSaveError {
 #[allow(dead_code)]
 pub fn load(path: impl AsRef<Path>) -> Result<MapData, MapLoadError> {
     let path = path.as_ref();
-    let bytes_compressed = fs::read(path).map_err(|e| MapLoadError::IOError(e))?;
+    let bytes_compressed = fs::read(path).map_err(MapLoadError::IOError)?;
 
-    let bytes = zstd::decode_all::<&[u8]>(&bytes_compressed)
-        .map_err(|e| MapLoadError::DecompressionError(e))?;
+    let bytes =
+        zstd::decode_all::<&[u8]>(&bytes_compressed).map_err(MapLoadError::DecompressionError)?;
 
     rkyv::from_bytes::<MapData, rkyv::rancor::Error>(&bytes)
-        .map_err(|e| MapLoadError::DeserializationError(e))
+        .map_err(MapLoadError::DeserializationError)
 }
 
 #[allow(dead_code)]
 pub fn save(map_data: impl Into<MapData>, path: impl AsRef<Path>) -> Result<(), MapSaveError> {
     let path = path.as_ref();
     let data = map_data.into();
-    let bytes = rkyv::to_bytes::<rkyv::rancor::Error>(&data)
-        .map_err(|e| MapSaveError::SerializationError(e))?;
+    let bytes =
+        rkyv::to_bytes::<rkyv::rancor::Error>(&data).map_err(MapSaveError::SerializationError)?;
 
-    let compressed =
-        zstd::encode_all(bytes.as_ref(), 0).map_err(|e| MapSaveError::CompressionError(e))?;
+    let compressed = zstd::encode_all(bytes.as_ref(), 0).map_err(MapSaveError::CompressionError)?;
 
-    fs::write(path, compressed).map_err(|e| MapSaveError::IOError(e))
+    fs::write(path, compressed).map_err(MapSaveError::IOError)
 }
 
 #[derive(Debug, Serialize, Deserialize, Archive, Clone, Copy)]

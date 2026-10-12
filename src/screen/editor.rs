@@ -267,24 +267,23 @@ impl Screen for Editor {
                             }
                         });
 
-                        if ui.button("Create").clicked() {
-                            if let Some(bytes) = image_bytes
-                                && !name.is_empty()
-                            {
-                                let map_data = MapData {
-                                    name: name.to_owned(),
-                                    image: bytes.to_owned(),
-                                    ..Default::default()
-                                };
+                        if ui.button("Create").clicked()
+                            && let Some(bytes) = image_bytes
+                            && !name.is_empty()
+                        {
+                            let map_data = MapData {
+                                name: name.to_owned(),
+                                image: bytes.to_owned(),
+                                ..Default::default()
+                            };
 
-                                next_mode = Some(EditorMode::Editing(EditorData {
-                                    viewer: MapViewer::new(ui, bytes),
-                                    map_save_path: None,
-                                    storage: EditorStorage::new(&map_data),
-                                    map_data,
-                                    renaming: None,
-                                }))
-                            }
+                            next_mode = Some(EditorMode::Editing(EditorData {
+                                viewer: MapViewer::new(ui, bytes),
+                                map_save_path: None,
+                                storage: EditorStorage::new(&map_data),
+                                map_data,
+                                renaming: None,
+                            }))
                         }
                     });
 
@@ -303,7 +302,7 @@ impl Screen for Editor {
 
                             if ui.button("Save").clicked() {
                                 if let Some(path) = &data.map_save_path {
-                                    data.save(&path);
+                                    data.save(path);
                                 } else {
                                     saving_as_new = true;
                                 }
